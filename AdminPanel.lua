@@ -14,6 +14,49 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.Keyboard
 -- Configuração
 local ADMIN_KEY = Enum.KeyCode.F2 -- Pressione F2 para abrir/fechar (PC)
 local TELEPORT_REMOTE = game.ReplicatedStorage.Remotes.TeleportStage -- Ajuste conforme necessário
+local TELEPORT_RF = game.ReplicatedStorage.Remotes.TeleportStageRF -- RemoteFunction alternativa
+
+-- Função para teleportar
+local function teleportToStage(stageNumber)
+	local teleported = false
+	local errorMsg = ""
+
+	-- Tentar RemoteFunction TeleportStageRF primeiro
+	if TELEPORT_RF then
+		local success, result = pcall(function()
+			return TELEPORT_RF:InvokeServer(stageNumber)
+		end)
+		if success then
+			print("✓ Teleportado para Stage " .. stageNumber .. " (TeleportStageRF)")
+			teleported = true
+			return true
+		else
+			errorMsg = errorMsg .. "\n❌ TeleportStageRF falhou: " .. tostring(result)
+		end
+	end
+
+	-- Tentar RemoteEvent TeleportStage
+	if not teleported and TELEPORT_REMOTE then
+		local success, result = pcall(function()
+			TELEPORT_REMOTE:FireServer(stageNumber)
+			return true
+		end)
+		if success then
+			print("✓ Teleportado para Stage " .. stageNumber .. " (TeleportStage FireServer)")
+			teleported = true
+			return true
+		else
+			errorMsg = errorMsg .. "\n❌ TeleportStage FireServer falhou: " .. tostring(result)
+		end
+	end
+
+	if not teleported then
+		print("⚠️ Erro ao teleportar para Stage " .. stageNumber .. errorMsg)
+		return false
+	end
+
+	return teleported
+end
 
 -- Criar ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -208,18 +251,7 @@ local function createStageButton(stageName, stageNumber)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
-		-- Opção 1: Usar RemoteFunction TeleportStage
-		local success, result = pcall(function()
-			return TELEPORT_REMOTE:InvokeServer(stageNumber)
-		end)
-
-		if success then
-			print("✓ Teleportado para Stage " .. stageNumber)
-		else
-			-- Opção 2: Se InvokeServer não funcionar, tenta como FireServer
-			TELEPORT_REMOTE:FireServer(stageNumber)
-			print("✓ Teleporte enviado para Stage " .. stageNumber)
-		end
+		teleportToStage(stageNumber)
 
 		-- Fechar automaticamente após teleportar
 		wait(0.3)
@@ -285,24 +317,30 @@ end)
 -- Drag do FAB button para mobile
 local dragging = false
 local dragStart = nil
-local dragOffset = nil
+local startPosition = nil
 
 fabButton.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
-		dragOffset = {
-			X = fabButton.AbsolutePosition.X - input.Position.X,
-			Y = fabButton.AbsolutePosition.Y - input.Position.Y
-		}
+		startPosition = fabButton.Position
 	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch and dragging and dragStart then
-		local delta = input.Position - dragStart
-		local newX = fabButton.AbsolutePosition.X - delta.X
-		local newY = fabButton.AbsolutePosition.Y - delta.Y
+	if input.UserInputType == Enum.UserInputType.Touch and dragging and dragStart and startPosition then
+		local currentPos = input.Position
+		local deltaX = currentPos.X - dragStart.X
+		local deltaY = currentPos.Y - dragStart.Y
+
+		-- Calcular nova posição (adicionar delta ao invés de subtrair)
+		local newX = startPosition.X.Offset + deltaX
+		local newY = startPosition.Y.Offset + deltaY
+
+		-- Limitar aos limites da tela
+		local screenSize = fabButton.Parent.AbsoluteSize
+		newX = math.max(0, math.min(newX, screenSize.X - 60))
+		newY = math.max(0, math.min(newY, screenSize.Y - 60))
 
 		fabButton.Position = UDim2.new(0, newX, 0, newY)
 	end
@@ -312,6 +350,7 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
 		dragging = false
 		dragStart = nil
+		startPosition = nil
 	end
 end)
 
