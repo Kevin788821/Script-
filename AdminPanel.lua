@@ -1,362 +1,787 @@
--- Admin Panel LocalScript - MOBILE OPTIMIZED
--- Coloque isso em StarterPlayer > StarterPlayerScripts
+--[[ 
+	GROW A GARDEN - ADMIN PANEL SUPREMO v3.0
+	Desenvolvido por: Kevin
+	Compatível com: Mobile + Desktop
+	Exploits: Avançados com Fallback automático
+	Data: 28/06/2026
+]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- Detectar se é mobile
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+-- ============================================================
+-- CONFIGURAÇÃO INICIAL
+-- ============================================================
 
--- Configuração
-local ADMIN_KEY = Enum.KeyCode.F2 -- Pressione F2 para abrir/fechar (PC)
-local TELEPORT_REMOTE = game.ReplicatedStorage.Remotes.TeleportStage -- Ajuste conforme necessário
-local TELEPORT_RF = game.ReplicatedStorage.Remotes.TeleportStageRF -- RemoteFunction alternativa
-
--- Função para teleportar
-local function teleportToStage(stageNumber)
-	local teleported = false
-	local errorMsg = ""
-
-	-- Tentar RemoteFunction TeleportStageRF primeiro
-	if TELEPORT_RF then
-		local success, result = pcall(function()
-			return TELEPORT_RF:InvokeServer(stageNumber)
-		end)
-		if success then
-			print("✓ Teleportado para Stage " .. stageNumber .. " (TeleportStageRF)")
-			teleported = true
-			return true
-		else
-			errorMsg = errorMsg .. "\n❌ TeleportStageRF falhou: " .. tostring(result)
-		end
-	end
-
-	-- Tentar RemoteEvent TeleportStage
-	if not teleported and TELEPORT_REMOTE then
-		local success, result = pcall(function()
-			TELEPORT_REMOTE:FireServer(stageNumber)
-			return true
-		end)
-		if success then
-			print("✓ Teleportado para Stage " .. stageNumber .. " (TeleportStage FireServer)")
-			teleported = true
-			return true
-		else
-			errorMsg = errorMsg .. "\n❌ TeleportStage FireServer falhou: " .. tostring(result)
-		end
-	end
-
-	if not teleported then
-		print("⚠️ Erro ao teleportar para Stage " .. stageNumber .. errorMsg)
-		return false
-	end
-
-	return teleported
-end
-
--- Criar ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AdminPanelGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
--- Botão flutuante para mobile (FAB - Floating Action Button)
-local fabButton = Instance.new("TextButton")
-fabButton.Name = "FABButton"
-fabButton.Size = UDim2.new(0, 60, 0, 60)
-fabButton.Position = UDim2.new(1, -80, 1, -80)
-fabButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-fabButton.BorderSizePixel = 0
-fabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-fabButton.TextSize = 28
-fabButton.Font = Enum.Font.GothamBold
-fabButton.Text = "⚙️"
-fabButton.Visible = isMobile
-fabButton.Parent = screenGui
-fabButton.ZIndex = 100
-
-local fabCorner = Instance.new("UICorner")
-fabCorner.CornerRadius = UDim.new(1)
-fabCorner.Parent = fabButton
-
-local fabShadow = Instance.new("UIStroke")
-fabShadow.Thickness = 2
-fabShadow.Color = Color3.fromRGB(0, 100, 200)
-fabShadow.Parent = fabButton
-
--- Frame principal
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = isMobile and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 450, 0, 650)
-mainFrame.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0.5, -225, 0.5, -325)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false
-mainFrame.Parent = screenGui
-mainFrame.ZIndex = 99
-
--- Adicionar sombra
-local shadow = Instance.new("UICorner")
-shadow.CornerRadius = UDim.new(0, 12)
-shadow.Parent = mainFrame
-
-local shadowGradient = Instance.new("UIGradient")
-shadowGradient.Color = ColorSequence.new(Color3.fromRGB(10, 10, 20), Color3.fromRGB(30, 30, 40))
-shadowGradient.Rotation = 45
-shadowGradient.Parent = mainFrame
-
--- Header
-local header = Instance.new("Frame")
-header.Name = "Header"
-header.Size = UDim2.new(1, 0, 0, 60)
-header.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-header.BorderSizePixel = 0
-header.Parent = mainFrame
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 12)
-headerCorner.Parent = header
-
-local headerGradient = Instance.new("UIGradient")
-headerGradient.Color = ColorSequence.new(Color3.fromRGB(0, 100, 200), Color3.fromRGB(0, 150, 255))
-headerGradient.Parent = header
-
--- Título
-local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, -20, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 28
-title.Font = Enum.Font.GothamBold
-title.Text = "⚙️ ADMIN PANEL"
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = header
-
--- Close Button
-local closeBtn = Instance.new("TextButton")
-closeBtn.Name = "CloseBtn"
-closeBtn.Size = UDim2.new(0, 50, 0, 50)
-closeBtn.Position = UDim2.new(1, -60, 0, 5)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-closeBtn.BorderSizePixel = 0
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.TextSize = 20
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.Text = "✕"
-closeBtn.Parent = header
-closeBtn.ZIndex = 100
-
-local closeBtnCorner = Instance.new("UICorner")
-closeBtnCorner.CornerRadius = UDim.new(0, 8)
-closeBtnCorner.Parent = closeBtn
-
-closeBtn.MouseButton1Click:Connect(function()
-	mainFrame.Visible = false
-	if isMobile then
-		fabButton.Visible = true
-	end
-end)
-
--- ScrollingFrame para os botões
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name = "ScrollFrame"
-scrollFrame.Size = UDim2.new(1, 0, 1, -70)
-scrollFrame.Position = UDim2.new(0, 0, 0, 60)
-scrollFrame.BackgroundTransparency = 1
-scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = isMobile and 6 or 8
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-scrollFrame.Parent = mainFrame
-
--- UIListLayout para organizar botões
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 8)
-listLayout.FillDirection = Enum.FillDirection.Vertical
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-listLayout.Parent = scrollFrame
-
--- Padding
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 10)
-padding.PaddingBottom = UDim.new(0, 10)
-padding.PaddingLeft = UDim.new(0, 10)
-padding.PaddingRight = UDim.new(0, 10)
-padding.Parent = scrollFrame
-
--- Função para criar botão de teleporte
-local function createStageButton(stageName, stageNumber)
-	local btn = Instance.new("TextButton")
-	btn.Name = "Stage_" .. stageNumber
-	btn.Size = UDim2.new(1, -20, 0, isMobile and 45 or 50)
-	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-	btn.BorderSizePixel = 0
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.TextSize = isMobile and 14 or 16
-	btn.Font = Enum.Font.GothamBold
-	btn.Text = "📍 " .. stageName
-	btn.Parent = scrollFrame
-
-	-- Estilo do botão
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = btn
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(Color3.fromRGB(40, 40, 60), Color3.fromRGB(60, 60, 80))
-	gradient.Parent = btn
-
-	-- Efeito hover/touch
-	local function activateButton()
-		local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tween = game:GetService("TweenService"):Create(btn, tweenInfo, {
-			BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-		})
-		tween:Play()
-	end
-
-	local function deactivateButton()
-		local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tween = game:GetService("TweenService"):Create(btn, tweenInfo, {
-			BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-		})
-		tween:Play()
-	end
-
-	btn.MouseEnter:Connect(function()
-		if not isMobile then
-			activateButton()
-		end
-	end)
-
-	btn.MouseLeave:Connect(function()
-		if not isMobile then
-			deactivateButton()
-		end
-	end)
-
-	-- Click para teleportar
-	btn.MouseButton1Down:Connect(function()
-		activateButton()
-	end)
-
-	btn.MouseButton1Up:Connect(function()
-		deactivateButton()
-	end)
-
-	btn.MouseButton1Click:Connect(function()
-		teleportToStage(stageNumber)
-
-		-- Fechar automaticamente após teleportar
-		wait(0.3)
-		mainFrame.Visible = false
-		if isMobile then
-			fabButton.Visible = true
-		end
-	end)
-
-	return btn
-end
-
--- Criar botões para as 22 fases
-local stages = {
-	{name = "Stage 1", number = 1},
-	{name = "Stage 2", number = 2},
-	{name = "Stage 3", number = 3},
-	{name = "Stage 4", number = 4},
-	{name = "Stage 5", number = 5},
-	{name = "Stage 6", number = 6},
-	{name = "Stage 7", number = 7},
-	{name = "Stage 8", number = 8},
-	{name = "Stage 9", number = 9},
-	{name = "Stage 10", number = 10},
-	{name = "Stage 11", number = 11},
-	{name = "Stage 12", number = 12},
-	{name = "Stage 13", number = 13},
-	{name = "Stage 14", number = 14},
-	{name = "Stage 15", number = 15},
-	{name = "Stage 16", number = 16},
-	{name = "Stage 17", number = 17},
-	{name = "Stage 18", number = 18},
-	{name = "Stage 19", number = 19},
-	{name = "Stage 20", number = 20},
-	{name = "Stage 21", number = 21},
-	{name = "Stage 22", number = 22},
+local ADMIN_PANEL = {
+	isActive = true,
+	currentTab = "home",
+	isRunning = false,
+	activeExploit = nil,
 }
 
-for _, stage in ipairs(stages) do
-	createStageButton(stage.name, stage.number)
+local FRUIT_VALUES = {
+	["Apple"] = 15,
+	["Banana"] = 20,
+	["Strawberry"] = 18,
+	["Blueberry"] = 16,
+	["Tomato"] = 12,
+	["Coconut"] = 25,
+	["Mango"] = 22,
+	["Cherry"] = 19,
+	["Grape"] = 17,
+	["Pineapple"] = 28,
+	["Dragon Fruit"] = 35,
+	["Moon Bloom"] = 50,
+}
+
+-- ============================================================
+-- FUNÇÕES AUXILIARES
+-- ============================================================
+
+local function findOwnPlot()
+	local plots = {}
+	local gardens = Workspace:FindFirstChild("Gardens")
+	if not gardens then return nil end
+	
+	for _, plot in pairs(gardens:GetChildren()) do
+		if plot:FindFirstChild("Plants") then
+			table.insert(plots, plot)
+		end
+	end
+	return plots[1] or nil
 end
 
--- Atualizar canvas size
-listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+local function findAllPlots()
+	local plots = {}
+	local gardens = Workspace:FindFirstChild("Gardens")
+	if not gardens then return plots end
+	
+	for _, plot in pairs(gardens:GetChildren()) do
+		if plot:FindFirstChild("Plants") then
+			table.insert(plots, plot)
+		end
+	end
+	return plots
+end
+
+local function getPlayerInGarden(plot)
+	for _, otherPlayer in pairs(Players:GetPlayers()) do
+		if otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (otherPlayer.Character.HumanoidRootPart.Position - plot.PrimaryPart.Position).Magnitude
+			if dist < 100 then
+				return otherPlayer
+			end
+		end
+	end
+	return nil
+end
+
+local function getFruitsInPlot(plot)
+	local fruits = {}
+	local plantsFolder = plot:FindFirstChild("Plants")
+	if not plantsFolder then return fruits end
+	
+	for _, plant in pairs(plantsFolder:GetChildren()) do
+		if plant:IsA("Model") and plant:FindFirstChild("Handle") then
+			table.insert(fruits, {
+				model = plant,
+				position = plant.PrimaryPart.Position,
+				name = plant.Name
+			})
+		end
+	end
+	return fruits
+end
+
+local function getFruitValue(fruitName)
+	return FRUIT_VALUES[fruitName] or 10
+end
+
+local function sortFruitsByValue(fruits)
+	table.sort(fruits, function(a, b)
+		return getFruitValue(a.name) > getFruitValue(b.name)
+	end)
+	return fruits
+end
+
+local function teleportPlayer(position)
+	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		player.Character.HumanoidRootPart.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
+	end
+end
+
+local function clickOnObject(object)
+	if object:FindFirstChild("Handle") then
+		mouse.Target = object.Handle
+		mouse.Hit = object.Handle.CFrame
+		game:GetService("VirtualInputManager"):SendMouseButtonEvent(mouse.X, mouse.Y, 0, true)
+		wait(0.05)
+		game:GetService("VirtualInputManager"):SendMouseButtonEvent(mouse.X, mouse.Y, 0, false)
+	end
+end
+
+-- ============================================================
+-- EXPLOITS - FUNÇÕES PRINCIPAIS
+-- ============================================================
+
+local Exploits = {}
+
+function Exploits.HarvestGarden()
+	print("[🌾 COLHEITA] Iniciando...")
+	
+	local myPlot = findOwnPlot()
+	if not myPlot then
+		print("[🌾 COLHEITA] ❌ Jardim não encontrado!")
+		return
+	end
+	
+	print("[🌾 COLHEITA] ✓ Jardim encontrado, coletando...")
+	
+	local fruits = getFruitsInPlot(myPlot)
+	print("[🌾 COLHEITA] Encontradas " .. #fruits .. " frutas")
+	
+	for i, fruit in pairs(fruits) do
+		if not ADMIN_PANEL.isRunning then break end
+		
+		print("[🌾 COLHEITA] Coletando " .. i .. ": " .. fruit.name)
+		teleportPlayer(fruit.position)
+		wait(0.3)
+		clickOnObject(fruit.model)
+		wait(0.5)
+	end
+	
+	local spawnPoint = myPlot:FindFirstChild("SpawnPoint")
+	if spawnPoint then
+		teleportPlayer(spawnPoint.Position)
+	end
+	
+	print("[🌾 COLHEITA] ✅ Concluída!")
+	ADMIN_PANEL.isRunning = false
+end
+
+function Exploits.SellAllFruits()
+	print("[💰 VENDA] Iniciando (SEM SAIR DO LUGAR)...")
+	
+	ADMIN_PANEL.isRunning = true
+	
+	while ADMIN_PANEL.isRunning and ADMIN_PANEL.activeExploit == "sell" do
+		local npcFolder = Workspace:FindFirstChild("NPCS")
+		if npcFolder then
+			local seller = npcFolder:FindFirstChild("Steven") or npcFolder:FindFirstChild("Sell_Steven")
+			
+			if seller and seller:FindFirstChild("HumanoidRootPart") then
+				print("[💰 VENDA] Enviando comando de venda...")
+				
+				-- Procura por RemoteEvent de venda
+				local vendorRemote = ReplicatedStorage:FindFirstChildOfClass("RemoteEvent")
+				if vendorRemote then
+					vendorRemote:FireServer("SellFruit")
+					print("[💰 VENDA] ✓ Frutas vendidas!")
+				end
+			end
+		end
+		
+		wait(3)
+	end
+	
+	print("[💰 VENDA] ✅ Auto-venda parada!")
+	ADMIN_PANEL.isRunning = false
+end
+
+function Exploits.BuySeedsAuto(seedName)
+	print("[🌱 COMPRA] Iniciando " .. seedName .. " (SEM SAIR DO LUGAR)...")
+	
+	ADMIN_PANEL.isRunning = true
+	
+	while ADMIN_PANEL.isRunning and ADMIN_PANEL.activeExploit == "buy" do
+		local mapFolder = Workspace:FindFirstChild("Map")
+		if mapFolder then
+			local standsFolder = mapFolder:FindFirstChild("Stands")
+			if standsFolder then
+				local seedsShop = standsFolder:FindFirstChild("Seeds")
+				
+				if seedsShop then
+					print("[🌱 COMPRA] Comprando " .. seedName .. "...")
+					
+					-- Procura por RemoteEvent de compra
+					local buyRemote = ReplicatedStorage:FindFirstChildOfClass("RemoteEvent")
+					if buyRemote then
+						buyRemote:FireServer("BuySeed", seedName)
+						print("[🌱 COMPRA] ✓ Semente comprada!")
+					end
+				end
+			end
+		end
+		
+		wait(2)
+	end
+	
+	print("[🌱 COMPRA] ✅ Compra parada!")
+	ADMIN_PANEL.isRunning = false
+end
+
+function Exploits.StealFruitAuto()
+	print("[🔓 ROUBO] Iniciando (apenas à noite)...")
+	
+	ADMIN_PANEL.isRunning = true
+	local nightValue = ReplicatedStorage:FindFirstChild("Night")
+	
+	while ADMIN_PANEL.isRunning and ADMIN_PANEL.activeExploit == "steal" do
+		local isNight = (nightValue and nightValue.Value == true)
+		
+		if not isNight then
+			print("[🔓 ROUBO] ⏳ Aguardando noite...")
+			wait(5)
+			goto continue
+		end
+		
+		print("[🔓 ROUBO] 🌙 É noite! Procurando frutas...")
+		
+		local myPlot = findOwnPlot()
+		if not myPlot then
+			print("[🔓 ROUBO] ❌ Seu jardim não encontrado")
+			goto continue
+		end
+		
+		local allPlots = findAllPlots()
+		
+		for _, targetPlot in pairs(allPlots) do
+			if targetPlot ~= myPlot then
+				
+				local playerInGarden = getPlayerInGarden(targetPlot)
+				if playerInGarden then
+					print("[🔓 ROUBO] ⚠️ Jogador neste jardim, pulando...")
+					goto nextPlot
+				end
+				
+				local fruits = getFruitsInPlot(targetPlot)
+				
+				if #fruits > 0 then
+					fruits = sortFruitsByValue(fruits)
+					
+					-- Tentar até 10 frutas (FALLBACK AUTOMÁTICO)
+					for priority = 1, math.min(#fruits, 10) do
+						if not ADMIN_PANEL.isRunning then break end
+						
+						local fruit = fruits[priority]
+						print("[🔓 ROUBO] Tentando #" .. priority .. ": " .. fruit.name .. " (valor: " .. getFruitValue(fruit.name) .. ")")
+						
+						if getPlayerInGarden(targetPlot) then
+							print("[🔓 ROUBO] ⚠️ Jogador entrou! Próxima fruta...")
+							goto nextFruit
+						end
+						
+						teleportPlayer(fruit.position)
+						wait(0.5)
+						clickOnObject(fruit.model)
+						wait(0.5)
+						
+						local mySpawn = myPlot:FindFirstChild("SpawnPoint")
+						if mySpawn then
+							teleportPlayer(mySpawn.Position)
+						end
+						
+						print("[🔓 ROUBO] ✓ Roubada: " .. fruit.name)
+						wait(1)
+						break
+						
+						::nextFruit::
+					end
+				end
+				
+				::nextPlot::
+				wait(2)
+			end
+		end
+		
+		wait(5)
+		::continue::
+	end
+	
+	print("[🔓 ROUBO] ✅ Roubo parado!")
+	ADMIN_PANEL.isRunning = false
+end
+
+function Exploits.MonitorShopStock()
+	print("[📊 SHOP] Monitorando em tempo real...")
+	
+	ADMIN_PANEL.isRunning = true
+	
+	while ADMIN_PANEL.isRunning and ADMIN_PANEL.activeExploit == "shop" do
+		local stockValues = ReplicatedStorage:FindFirstChild("StockValues")
+		
+		if stockValues then
+			local seedShop = stockValues:FindFirstChild("SeedShop")
+			if seedShop then
+				local nextRestock = seedShop:FindFirstChild("UnixNextRestock")
+				local lastRestock = seedShop:FindFirstChild("UnixLastRestock")
+				
+				if nextRestock and lastRestock then
+					local currentTime = os.time()
+					local nextTime = nextRestock.Value
+					local lastTime = lastRestock.Value
+					local timeUntil = nextTime - currentTime
+					
+					print("\n" .. string.rep("=", 40))
+					print("📊 SEED SHOP STATUS")
+					print(string.rep("=", 40))
+					print("Último restock: " .. os.date("%H:%M:%S", lastTime))
+					print("Próximo restock: " .. os.date("%H:%M:%S", nextTime))
+					
+					if timeUntil > 0 then
+						local mins = math.floor(timeUntil / 60)
+						local secs = timeUntil % 60
+						print("⏱️  Em: " .. mins .. "m " .. secs .. "s")
+					else
+						print("🔄 RESTOCKANDO AGORA!")
+					end
+					
+					local items = seedShop:FindFirstChild("Items")
+					if items then
+						print("\n🌱 Itens: (" .. #items:GetChildren() .. ")")
+						for _, item in pairs(items:GetChildren()) do
+							print("   • " .. item.Name)
+						end
+					end
+				end
+			end
+			
+			local crateShop = stockValues:FindFirstChild("CrateShop")
+			if crateShop then
+				local nextRestock = crateShop:FindFirstChild("UnixNextRestock")
+				
+				if nextRestock then
+					local currentTime = os.time()
+					local nextTime = nextRestock.Value
+					local timeUntil = nextTime - currentTime
+					
+					print("\n" .. string.rep("=", 40))
+					print("🎁 CRATE SHOP STATUS")
+					print(string.rep("=", 40))
+					print("Próximo restock: " .. os.date("%H:%M:%S", nextTime))
+					
+					if timeUntil > 0 then
+						local mins = math.floor(timeUntil / 60)
+						local secs = timeUntil % 60
+						print("⏱️  Em: " .. mins .. "m " .. secs .. "s")
+					else
+						print("🔄 RESTOCKANDO AGORA!")
+					end
+					
+					local items = crateShop:FindFirstChild("Items")
+					if items then
+						print("\n🎁 Crates: (" .. #items:GetChildren() .. ")")
+						for _, item in pairs(items:GetChildren()) do
+							print("   • " .. item.Name)
+						end
+					end
+				end
+			end
+			
+			print(string.rep("=", 40) .. "\n")
+		end
+		
+		wait(5)
+	end
+	
+	print("[📊 SHOP] ✅ Monitoramento parado!")
+	ADMIN_PANEL.isRunning = false
+end
+
+-- ============================================================
+-- CRIAR GUI PRINCIPAL
+-- ============================================================
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminPanelSupremo"
+screenGui.ResetOnSpawn = false
+screenGui.SafeAreaCompatible = true
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 380, 0, 550)
+mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local cornerRadius = Instance.new("UICorner")
+cornerRadius.CornerRadius = UDim.new(0, 15)
+cornerRadius.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 200, 255)
+stroke.Thickness = 2.5
+stroke.Parent = mainFrame
+
+-- ============================================================
+-- HEADER
+-- ============================================================
+
+local headerFrame = Instance.new("Frame")
+headerFrame.Name = "Header"
+headerFrame.Size = UDim2.new(1, 0, 0, 55)
+headerFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 15)
+headerFrame.BorderSizePixel = 0
+headerFrame.Parent = mainFrame
+
+local headerGradient = Instance.new("UIGradient")
+headerGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 80, 200)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 60, 150))
+})
+headerGradient.Parent = headerFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -50, 1, 0)
+titleLabel.Position = UDim2.new(0, 15, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "⚙️ ADMIN PANEL v3"
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = headerFrame
+
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 40, 1, 0)
+closeButton.Position = UDim2.new(1, -40, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextScaled = true
+closeButton.Text = "×"
+closeButton.BorderSizePixel = 0
+closeButton.Parent = headerFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeButton
+
+-- ============================================================
+-- ABAS DE NAVEGAÇÃO
+-- ============================================================
+
+local tabsFrame = Instance.new("Frame")
+tabsFrame.Name = "Tabs"
+tabsFrame.Size = UDim2.new(1, 0, 0, 40)
+tabsFrame.Position = UDim2.new(0, 0, 0, 55)
+tabsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+tabsFrame.BorderSizePixel = 0
+tabsFrame.Parent = mainFrame
+
+local tabsLayout = Instance.new("UIListLayout")
+tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+tabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+tabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabsLayout.Padding = UDim.new(0, 2)
+tabsLayout.Parent = tabsFrame
+
+local tabs = {
+	{name = "🏠", id = "home"},
+	{name = "🌾", id = "harvest"},
+	{name = "💰", id = "sell"},
+	{name = "🌱", id = "buy"},
+	{name = "🔓", id = "steal"},
+	{name = "📊", id = "shop"},
+}
+
+local tabButtons = {}
+
+for i, tab in ipairs(tabs) do
+	local tabButton = Instance.new("TextButton")
+	tabButton.Name = tab.id
+	tabButton.Size = UDim2.new(0, 58, 1, 0)
+	tabButton.BackgroundColor3 = Color3.fromRGB(30, 40, 60)
+	tabButton.TextColor3 = Color3.fromRGB(180, 180, 200)
+	tabButton.Font = Enum.Font.GothamSemibold
+	tabButton.TextScaled = true
+	tabButton.Text = tab.name
+	tabButton.BorderSizePixel = 0
+	tabButton.Parent = tabsFrame
+	
+	local tabCorner = Instance.new("UICorner")
+	tabCorner.CornerRadius = UDim.new(0, 6)
+	tabCorner.Parent = tabButton
+	
+	tabButtons[tab.id] = {button = tabButton, id = tab.id}
+	
+	tabButton.MouseButton1Click:Connect(function()
+		ADMIN_PANEL.currentTab = tab.id
+		UpdateTabSelection()
+		UpdateContentFrame()
+	end)
+end
+
+-- ============================================================
+-- CONTEÚDO PRINCIPAL
+-- ============================================================
+
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "Content"
+contentFrame.Size = UDim2.new(1, 0, 1, -95)
+contentFrame.Position = UDim2.new(0, 0, 0, 95)
+contentFrame.BackgroundTransparency = 1
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = mainFrame
+
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "ScrollFrame"
+scrollFrame.Size = UDim2.new(1, -8, 1, -8)
+scrollFrame.Position = UDim2.new(0, 4, 0, 4)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 220)
+scrollFrame.Parent = contentFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Fill
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = scrollFrame
+
+-- ============================================================
+-- FUNÇÕES DE INTERFACE
+-- ============================================================
+
+local function CreateButton(parent, text, callback, color)
+	color = color or Color3.fromRGB(60, 150, 255)
+	
+	local button = Instance.new("TextButton")
+	button.Name = text
+	button.Size = UDim2.new(1, 0, 0, 40)
+	button.BackgroundColor3 = color
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Font = Enum.Font.GothamSemibold
+	button.TextScaled = true
+	button.Text = text
+	button.BorderSizePixel = 0
+	button.Parent = parent
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(100, 150, 255)
+	stroke.Thickness = 1
+	stroke.Parent = button
+	
+	button.MouseEnter:Connect(function()
+		button.BackgroundColor3 = color:lerp(Color3.fromRGB(255, 255, 255), 0.1)
+	end)
+	
+	button.MouseLeave:Connect(function()
+		button.BackgroundColor3 = color
+	end)
+	
+	button.MouseButton1Click:Connect(callback)
+	
+	return button
+end
+
+local function CreateLabel(parent, text, size)
+	size = size or 0.8
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(200, 200, 220)
+	label.Font = Enum.Font.Gotham
+	label.TextScaled = true
+	label.Text = text
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = parent
+	return label
+end
+
+local function UpdateTabSelection()
+	for id, tab in pairs(tabButtons) do
+		if id == ADMIN_PANEL.currentTab then
+			tab.button.BackgroundColor3 = Color3.fromRGB(60, 150, 255)
+			tab.button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		else
+			tab.button.BackgroundColor3 = Color3.fromRGB(30, 40, 60)
+			tab.button.TextColor3 = Color3.fromRGB(180, 180, 200)
+		end
+	end
+end
+
+local function ClearContent()
+	for _, child in pairs(scrollFrame:GetChildren()) do
+		if child ~= listLayout then
+			child:Destroy()
+		end
+	end
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+end
+
+function UpdateContentFrame()
+	ClearContent()
+	
+	if ADMIN_PANEL.currentTab == "home" then
+		CreateLabel(scrollFrame, "👋 Bem-vindo ao Admin Panel!", 1.2)
+		scrollFrame:FindFirstChild("UIListLayout").Padding = UDim.new(0, 15)
+		
+		CreateLabel(scrollFrame, "Versão: 3.0 SUPREMA", 0.7)
+		CreateLabel(scrollFrame, "Com exploits avançados", 0.7)
+		CreateLabel(scrollFrame, "Compatível com mobile e desktop", 0.7)
+		CreateLabel(scrollFrame, "", 0.5)
+		CreateLabel(scrollFrame, "✨ FUNCIONALIDADES:", 0.9)
+		CreateLabel(scrollFrame, "🌾 Colher frutas automaticamente", 0.7)
+		CreateLabel(scrollFrame, "💰 Vender sem sair do lugar", 0.7)
+		CreateLabel(scrollFrame, "🌱 Comprar sem se mover", 0.7)
+		CreateLabel(scrollFrame, "🔓 Roubar com fallback (até 10)", 0.7)
+		CreateLabel(scrollFrame, "📊 Monitor shop em tempo real", 0.7)
+		
+		CreateButton(scrollFrame, "🔄 Recarregar", function()
+			print("✓ Panel recarregado!")
+		end, Color3.fromRGB(100, 180, 100))
+		
+	elseif ADMIN_PANEL.currentTab == "harvest" then
+		CreateLabel(scrollFrame, "🌾 COLHEITA AUTOMÁTICA", 1.1)
+		CreateLabel(scrollFrame, "Colhe todas as frutas do seu jardim", 0.8)
+		CreateLabel(scrollFrame, "", 0.5)
+		
+		CreateButton(scrollFrame, "🚀 Iniciar Colheita", function()
+			ADMIN_PANEL.isRunning = true
+			ADMIN_PANEL.activeExploit = "harvest"
+			Exploits.HarvestGarden()
+		end, Color3.fromRGB(80, 200, 80))
+		
+	elseif ADMIN_PANEL.currentTab == "sell" then
+		CreateLabel(scrollFrame, "💰 VENDA AUTOMÁTICA", 1.1)
+		CreateLabel(scrollFrame, "Vende frutas SEM SAIR DO LUGAR", 0.8)
+		CreateLabel(scrollFrame, "", 0.5)
+		
+		CreateButton(scrollFrame, "💸 Vender Tudo", function()
+			ADMIN_PANEL.isRunning = true
+			ADMIN_PANEL.activeExploit = "sell"
+			Exploits.SellAllFruits()
+		end, Color3.fromRGB(200, 150, 60))
+		
+		CreateLabel(scrollFrame, "❌ Clique novamente para parar", 0.65)
+		
+	elseif ADMIN_PANEL.currentTab == "buy" then
+		CreateLabel(scrollFrame, "🌱 COMPRA AUTOMÁTICA", 1.1)
+		CreateLabel(scrollFrame, "Compra SEM SAIR DO LUGAR", 0.8)
+		CreateLabel(scrollFrame, "", 0.5)
+		
+		local seeds = {"Apple", "Strawberry", "Tomato", "Corn", "Pumpkin"}
+		for _, seed in ipairs(seeds) do
+			CreateButton(scrollFrame, "🛒 " .. seed, function()
+				ADMIN_PANEL.isRunning = true
+				ADMIN_PANEL.activeExploit = "buy"
+				Exploits.BuySeedsAuto(seed)
+			end, Color3.fromRGB(100, 180, 100))
+		end
+		
+	elseif ADMIN_PANEL.currentTab == "steal" then
+		CreateLabel(scrollFrame, "🔓 ROUBO AUTOMÁTICO", 1.1)
+		CreateLabel(scrollFrame, "Rouba melhores frutas (só noite)", 0.8)
+		CreateLabel(scrollFrame, "Fallback automático até 10 frutas", 0.7)
+		CreateLabel(scrollFrame, "", 0.5)
+		
+		CreateButton(scrollFrame, "⚡ Iniciar Roubo", function()
+			ADMIN_PANEL.isRunning = true
+			ADMIN_PANEL.activeExploit = "steal"
+			Exploits.StealFruitAuto()
+		end, Color3.fromRGB(255, 100, 100))
+		
+		CreateLabel(scrollFrame, "⚠️ Funciona apenas à noite!", 0.65)
+		CreateLabel(scrollFrame, "✓ Detecta jogadores automaticamente", 0.65)
+		
+	elseif ADMIN_PANEL.currentTab == "shop" then
+		CreateLabel(scrollFrame, "📊 MONITOR DE SHOP", 1.1)
+		CreateLabel(scrollFrame, "Stock em tempo real", 0.8)
+		CreateLabel(scrollFrame, "", 0.5)
+		
+		CreateButton(scrollFrame, "🔄 Iniciar Monitor", function()
+			ADMIN_PANEL.isRunning = true
+			ADMIN_PANEL.activeExploit = "shop"
+			Exploits.MonitorShopStock()
+		end, Color3.fromRGB(100, 150, 200))
+		
+		CreateLabel(scrollFrame, "Monitora Seed Shop + Crate Shop", 0.65)
+		CreateLabel(scrollFrame, "Atualiza a cada 5 segundos", 0.65)
+	end
+	
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+end
+
+-- ============================================================
+-- EVENTOS DO PANEL
+-- ============================================================
+
+closeButton.MouseButton1Click:Connect(function()
+	ADMIN_PANEL.isRunning = false
+	mainFrame:Destroy()
+	screenGui:Destroy()
+	ADMIN_PANEL.isActive = false
+	print("✓ Admin Panel fechado!")
 end)
 
--- Controle de abertura/fechamento
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+-- Drag do painel
+local isDragging = false
+local dragStart
+local posStart
+
+headerFrame.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
-
-	if input.KeyCode == ADMIN_KEY and not isMobile then
-		mainFrame.Visible = not mainFrame.Visible
-	end
-end)
-
--- FAB Button Click para mobile
-fabButton.MouseButton1Click:Connect(function()
-	mainFrame.Visible = true
-	fabButton.Visible = false
-end)
-
--- Drag do FAB button para mobile
-local dragging = false
-local dragStart = nil
-local startPosition = nil
-
-fabButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPosition = fabButton.Position
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch and dragging and dragStart and startPosition then
-		local currentPos = input.Position
-		local deltaX = currentPos.X - dragStart.X
-		local deltaY = currentPos.Y - dragStart.Y
-
-		-- Calcular nova posição (adicionar delta ao invés de subtrair)
-		local newX = startPosition.X.Offset + deltaX
-		local newY = startPosition.Y.Offset + deltaY
-
-		-- Limitar aos limites da tela
-		local screenSize = fabButton.Parent.AbsoluteSize
-		newX = math.max(0, math.min(newX, screenSize.X - 60))
-		newY = math.max(0, math.min(newY, screenSize.Y - 60))
-
-		fabButton.Position = UDim2.new(0, newX, 0, newY)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isDragging = true
+		dragStart = mouse.Position
+		posStart = mainFrame.Position
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-		dragStart = nil
-		startPosition = nil
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isDragging = false
 	end
 end)
 
-print("✓ Admin Panel Mobile carregado!")
-if isMobile then
-	print("📱 Toque no botão azul ⚙️ para abrir")
-else
-	print("💻 Pressione F2 para abrir/fechar")
-end
+RunService.RenderStepped:Connect(function()
+	if isDragging then
+		local delta = mouse.Position - dragStart
+		mainFrame.Position = posStart + UDim2.new(0, delta.X, 0, delta.Y)
+	end
+end)
+
+-- Parar exploit ao sair
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.KeyCode == Enum.KeyCode.Escape then
+		ADMIN_PANEL.isRunning = false
+	end
+end)
+
+-- ============================================================
+-- INICIALIZAR
+-- ============================================================
+
+UpdateTabSelection()
+UpdateContentFrame()
+
+print("\n" .. string.rep("=", 50))
+print("✅ ADMIN PANEL v3.0 SUPREMO CARREGADO!")
+print("📌 Sistema de abas: 🏠 🌾 💰 🌱 🔓 📊")
+print("⚡ Exploits avançados com fallback automático")
+print("📱 Compatível com mobile e desktop")
+print("🖱️  Arrastar pelo header para reposicionar")
+print("⌨️  Pressione ESC para parar qualquer exploit")
+print(string.rep("=", 50) .. "\n")
+
+_G.AdminPanel = ADMIN_PANEL
+_G.Exploits = Exploits
